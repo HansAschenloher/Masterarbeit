@@ -1,0 +1,3 @@
+[submodule "snntorch"]
+	path = snntorch
+	url = git@github.com:HansAschenloher/snntorch.git
