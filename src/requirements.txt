@@ -1,0 +1,7 @@
+torch
+snntorch
+clearml
+pytorch-ignite
+matplotlib
+numpy
+torchvision
