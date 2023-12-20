@@ -5,3 +5,4 @@ pytorch-ignite
 matplotlib
 numpy
 torchvision
+tonic
