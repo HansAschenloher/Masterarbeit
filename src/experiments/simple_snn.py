@@ -74,7 +74,7 @@ def attatch_logging_handlers(trainer):
     train_evaluator = create_supervised_evaluator(model, metrics=val_metrics, device=device)
     val_evaluator = create_supervised_evaluator(model, metrics=val_metrics, device=device)
 
-    @trainer.on(Events.ITERATION_COMPLETED(every=50))
+    @trainer.on(Events.EPOCH_COMPLETED)
     def log_training_results(trainer):
         train_evaluator.run(train_loader)
         cm = train_evaluator.state.metrics['cm']
@@ -87,7 +87,7 @@ def attatch_logging_handlers(trainer):
             yaxis="True Labels",
         )
 
-    @trainer.on(Events.ITERATION_COMPLETED(every=50))
+    @trainer.on(Events.EPOCH_COMPLETED)
     def log_validation_results(trainer):
         val_evaluator.run(val_loader)
         cm = val_evaluator.state.metrics['cm']
@@ -110,7 +110,7 @@ def attatch_logging_handlers(trainer):
     for tag, evaluator in [("training metrics", train_evaluator), ("validation metrics", val_evaluator)]:
         clearml_logger.attach_output_handler(
             evaluator,
-            event_name=Events.ITERATION_COMPLETED(every=50),
+            event_name=Events.EPOCH_COMPLETED,
             tag=tag,
             metric_names=["loss", "accuracy", "recall", "F1", "precision"],
             global_step_transform=global_step_from_engine(trainer),
@@ -161,9 +161,9 @@ class ToSpikes():
 config = {
     "num_steps": 64,
     "beta": 0.9,
-    "gain": 0.1,
+    "gain": 0.2,
     "batch_size": 128,
-    "max_epochs": 3,
+    "max_epochs": 4,
 }
 
 
@@ -191,5 +191,5 @@ if __name__ == "__main__":
     attatch_logging_handlers(trainer)
 
 
-    trainer.run(train_loader, max_epochs=config)
+    trainer.run(train_loader, max_epochs=config["max_epochs"])
     clearml_logger.get_task().completed()
