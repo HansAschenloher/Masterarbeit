@@ -1,4 +1,4 @@
-torch
+torch==2.1.1
 snntorch
 clearml
 pytorch-ignite
@@ -6,3 +6,4 @@ matplotlib
 numpy
 torchvision
 tonic
+optuna
