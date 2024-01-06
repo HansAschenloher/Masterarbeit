@@ -74,7 +74,7 @@ def attatch_logging_handlers(trainer):
     train_evaluator = create_supervised_evaluator(model, metrics=val_metrics, device=device)
     val_evaluator = create_supervised_evaluator(model, metrics=val_metrics, device=device)
 
-    @trainer.on(Events.ITERATION_COMPLETED(every=100))
+    @trainer.on(Events.EPOCH_COMPLETED)
     def log_training_results(trainer):
         train_evaluator.run(train_loader)
         cm = train_evaluator.state.metrics['cm']
@@ -87,7 +87,7 @@ def attatch_logging_handlers(trainer):
             yaxis="True Labels",
         )
 
-    @trainer.on(Events.ITERATION_COMPLETED(every=100))
+    @trainer.on(Events.EPOCH_COMPLETED)
     def log_validation_results(trainer):
         val_evaluator.run(val_loader)
         cm = val_evaluator.state.metrics['cm']
@@ -109,15 +109,15 @@ def attatch_logging_handlers(trainer):
 
     clearml_logger.attach_output_handler(
         val_evaluator,
-        event_name=Events.ITERATION_COMPLETED(every=100),
-        tag="val metrics",
+        event_name=Events.EPOCH_COMPLETED,
+        tag="validation metrics",
         metric_names=["loss", "accuracy", "recall", "F1", "precision"],
         global_step_transform=global_step_from_engine(trainer),
     )
 
     clearml_logger.attach_output_handler(
         train_evaluator,
-        event_name=Events.ITERATION_COMPLETED(every=100),
+        event_name=Events.EPOCH_COMPLETED,
         tag="training metrics",
         metric_names=["loss", "accuracy", "recall", "F1", "precision"],
         global_step_transform=global_step_from_engine(trainer),
@@ -169,7 +169,7 @@ config = {
     "beta": 0.9,
     "gain": 0.1,
     "batch_size": 128,
-    "max_epochs": 1,
+    "max_epochs": 5,
 }
 
 if __name__ == "__main__":
