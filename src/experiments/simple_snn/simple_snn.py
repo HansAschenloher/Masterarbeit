@@ -16,7 +16,7 @@ from torchvision.datasets import MNIST
 from torchvision.transforms import v2
 import sys
 
-sys.path.append("../")
+sys.path.append("../../")
 
 from models.fc_snn import SimpleFC
 
@@ -74,7 +74,7 @@ def attatch_logging_handlers(trainer):
     train_evaluator = create_supervised_evaluator(model, metrics=val_metrics, device=device)
     val_evaluator = create_supervised_evaluator(model, metrics=val_metrics, device=device)
 
-    @trainer.on(Events.EPOCH_COMPLETED)
+    @trainer.on(Events.ITERATION_COMPLETED(every=100))
     def log_training_results(trainer):
         train_evaluator.run(train_loader)
         cm = train_evaluator.state.metrics['cm']
@@ -87,7 +87,7 @@ def attatch_logging_handlers(trainer):
             yaxis="True Labels",
         )
 
-    @trainer.on(Events.EPOCH_COMPLETED)
+    @trainer.on(Events.ITERATION_COMPLETED(every=100))
     def log_validation_results(trainer):
         val_evaluator.run(val_loader)
         cm = val_evaluator.state.metrics['cm']
@@ -107,14 +107,21 @@ def attatch_logging_handlers(trainer):
         output_transform=lambda loss: {"batch loss": loss},
     )
 
-    for tag, evaluator in [("training metrics", train_evaluator), ("validation metrics", val_evaluator)]:
-        clearml_logger.attach_output_handler(
-            evaluator,
-            event_name=Events.EPOCH_COMPLETED,
-            tag=tag,
-            metric_names=["loss", "accuracy", "recall", "F1", "precision"],
-            global_step_transform=global_step_from_engine(trainer),
-        )
+    clearml_logger.attach_output_handler(
+        val_evaluator,
+        event_name=Events.ITERATION_COMPLETED(every=100),
+        tag="val metrics",
+        metric_names=["loss", "accuracy", "recall", "F1", "precision"],
+        global_step_transform=global_step_from_engine(trainer),
+    )
+
+    clearml_logger.attach_output_handler(
+        train_evaluator,
+        event_name=Events.ITERATION_COMPLETED(every=100),
+        tag="training metrics",
+        metric_names=["loss", "accuracy", "recall", "F1", "precision"],
+        global_step_transform=global_step_from_engine(trainer),
+    )
 
     checkpoint_handler = Checkpoint(
         {"model": model},
@@ -125,7 +132,6 @@ def attatch_logging_handlers(trainer):
         filename_prefix="best",
         global_step_transform=global_step_from_engine(trainer),
     )
-
 
     val_evaluator.add_event_handler(Events.EPOCH_COMPLETED, checkpoint_handler)
     clearml_logger.attach(
@@ -161,11 +167,10 @@ class ToSpikes():
 config = {
     "num_steps": 64,
     "beta": 0.9,
-    "gain": 0.2,
+    "gain": 0.1,
     "batch_size": 128,
-    "max_epochs": 4,
+    "max_epochs": 1,
 }
-
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -189,7 +194,6 @@ if __name__ == "__main__":
 
     trainer = create_supervised_trainer(model, optimizer, criterion, device)
     attatch_logging_handlers(trainer)
-
 
     trainer.run(train_loader, max_epochs=config["max_epochs"])
     clearml_logger.get_task().completed()
