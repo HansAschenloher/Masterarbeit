@@ -16,7 +16,7 @@ from torchvision.datasets import MNIST
 from torchvision.transforms import v2
 import sys
 
-sys.path.append("../../")
+sys.path.append("../")
 
 from models.fc_snn import SimpleFC
 
