@@ -1,0 +1,8 @@
+cython
+numpy==1.24.4
+pandas
+matplotlib==3.7.3
+snntorch
+torchvision
+tonic
+clearml
