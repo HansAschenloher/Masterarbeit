@@ -39,8 +39,6 @@ class Izhikevich(snn.Leaky):
             reset_mechanism,
             state_quant,
             output,
-            graded_spikes_factor,
-            learn_graded_spikes_factor,
         )
 
         self._init_gate_variables()
@@ -83,7 +81,7 @@ class Izhikevich(snn.Leaky):
         return v - self.reset * self.threshold, u + self.d
 
     def _base_zero(self, input_, v, u, time_resolution):
-        self.mem = torch.Tensor(np.array((1 - self.reset) * v + self.reset * self.c))
+        self.mem = torch.Tensor((1 - self.reset) * v + self.reset * self.c)
         v, u = self._base_state_function(input_, self.mem, u, time_resolution=time_resolution)
         return v, u + self.d * self.reset
 
