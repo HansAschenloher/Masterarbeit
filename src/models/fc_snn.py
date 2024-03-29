@@ -4,19 +4,19 @@ import torch.nn as nn
 
 
 class SimpleFC(nn.Module):
-    def __init__(self, beta, num_steps, **kwargs):
+    def __init__(self, beta, num_steps, num_input, **kwargs):
         super().__init__()
         self.num_steps = num_steps
-        num_inputs = 28 * 28
+        num_inputs = num_input
         num_hidden = 100
         num_outputs = 10
 
         # Initialize layers
         self.fc1 = nn.Linear(num_inputs, num_hidden)
-        self.lif1 = snn.Leaky(beta=beta)
+        self.lif1 = snn.Leaky(beta=beta, num_steps=num_steps)
 
         self.fc2 = nn.Linear(num_hidden, num_outputs)
-        self.lif2 = snn.Leaky(beta=beta)
+        self.lif2 = snn.Leaky(beta=beta, num_steps=num_steps)
 
     def forward(self, x):
         # Initialize hidden states at t=0

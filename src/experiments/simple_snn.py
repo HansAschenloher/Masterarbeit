@@ -176,7 +176,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     clearml_logger = ClearMLLogger(task_name="simple snn", project_name="Masterarbeit")
     clearml_logger.get_task().connect(config)
-    model = SimpleFC(config["beta"], num_steps=config["num_steps"]).to(device)
+    model = SimpleFC(config["beta"], num_steps=config["num_steps"], num_input=28*28).to(device)
 
     transform = v2.Compose([
         v2.Resize((28, 28)),

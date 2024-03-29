@@ -202,5 +202,5 @@ def vgg11(num_steps=64, batch_norm=False, num_cls=100) -> VGG:
     return _vgg("VGG11", batch_norm, False, num_steps=num_steps, num_cls=num_cls)
 
 
-def bntt(num_steps=25, num_cls=100) -> VGG:
-    return _vgg('BNTT', True, False, num_steps, num_cls)
+def bntt(num_steps=25, num_cls=100, batch_norm=True) -> VGG:
+    return _vgg('BNTT', batch_norm, False, num_steps, num_cls)
