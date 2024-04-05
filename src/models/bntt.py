@@ -5,6 +5,11 @@ import torch
 import torch.nn as nn
 from snntorch import utils
 
+
+import sys
+sys.path.append('..')
+
+
 configurations = {
 
     'BNTT': [
@@ -169,8 +174,8 @@ class VGG(nn.Module):
                                              )
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        utils.reset(self.features)
-        utils.reset(self.classifier)
+        #utils.reset(self.features)
+        #utils.reset(self.classifier)
         mem_rec1 = [];
         spk_rec1 = [];
         for t in range(self.num_steps):
