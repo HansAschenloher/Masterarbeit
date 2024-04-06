@@ -1,13 +1,13 @@
+import sys
 from typing import List
 
 import clearml
 import ignite
 import numpy as np
 import torch
-from clearml import Logger, OutputModel
+from clearml import Logger
 from ignite.contrib.handlers.clearml_logger import *
 from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
-from ignite.exceptions import NotComputableError
 from ignite.handlers import Checkpoint
 from ignite.metrics import Accuracy, Loss, Fbeta, Precision
 from ignite.metrics import ConfusionMatrix
@@ -18,40 +18,56 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST, FashionMNIST
 from torchvision.transforms import v2
-import sys
+from enum import  Enum, auto
 
 sys.path.append("../")
 
 from models.izhikevichNet import IzhikevichNet
-from neurons.lif import Leaky
+
+class Dataset(Enum):
+    MNIST = auto()
+    FASHION_MNIST = auto()
+
+def load_data(transform, batch_size, dataset: Dataset):
+    if(dataset == Dataset.MNIST):
+        return load_mnist(transform, batch_size)
+    elif(dataset == Dataset.FashionMNIST):
+        return load_fashion_mnist(transform, batch_size)
+    else:
+        raise ValueError("No valid dataset was provided")
 
 
-def binary_one_hot_output_transform(output):
-    y_pred, y = output
-    y_pred = ignite.utils.to_onehot(y_pred.long(), 10)
-    y = y.long()
-    return y_pred, y
-
-
-def load_data(transform, batch_size):
-    data_path = '/tmp/data/fashion_mnist'
+def load_mnist(transform, batch_size):
+    data_path = '/tmp/data/mnist'
     try:
-        data = clearml.datasets.Dataset.get(dataset_name="fashion_mnist", dataset_version="1.0.0")
+        data = clearml.datasets.Dataset.get(dataset_name="MNIST", dataset_version="1.0.0")
         data_path = data.get_local_copy()
-        mnist_train = MNIST(data_path, train=True, download=False, transform=transform)
-        mnist_test = MNIST(data_path, train=False, download=False, transform=transform)
+        data_train = MNIST(data_path, train=True, download=False, transform=transform)
+        data_test = MNIST(data_path, train=False, download=False, transform=transform)
     except Exception:
-        mnist_train = FashionMNIST(data_path, train=True, download=True, transform=transform)
-        mnist_test = FashionMNIST(data_path, train=False, download=True, transform=transform)
-    train_loader = DataLoader(mnist_train, batch_size=batch_size, shuffle=True, drop_last=True)
-    test_loader = DataLoader(mnist_test, batch_size=batch_size, shuffle=True, drop_last=True)
+        data_train =MNIST(data_path, train=True, download=True, transform=transform)
+        data_test = MNIST(data_path, train=False, download=True, transform=transform)
+    train_loader = DataLoader(data_train, batch_size=batch_size, shuffle=True, drop_last=True)
+    test_loader = DataLoader(data_test, batch_size=batch_size, shuffle=True, drop_last=True)
 
     return train_loader, test_loader
 
+def load_fashion_mnist(transform, batch_size):
+    data_path = '/tmp/data/fashion_mnist'
+    try:
+        data = clearml.datasets.Dataset.get(dataset_name="FashionMNIST", dataset_version="1.0.0")
+        data_path = data.get_local_copy()
+        data_train = FashionMNIST(data_path, train=True, download=False, transform=transform)
+        data_test = FashionMNIST(data_path, train=False, download=False, transform=transform)
+    except Exception:
+        data_train = FashionMNIST(data_path, train=True, download=True, transform=transform)
+        data_test = FashionMNIST(data_path, train=False, download=True, transform=transform)
+    train_loader = DataLoader(data_train, batch_size=batch_size, shuffle=True, drop_last=True)
+    test_loader = DataLoader(data_test, batch_size=batch_size, shuffle=True, drop_last=True)
+
+    return train_loader, test_loader
 
 def loss(prediction, targets, **kwargs):
-
-    alpha = torch.as_tensor(10*1000)
     loss_val = torch.zeros(1, device=device)
     mem_rec = prediction[1]
     spks = SpikeActivity()
@@ -61,7 +77,7 @@ def loss(prediction, targets, **kwargs):
     for step in range(num_steps):
         loss_val += nn.CrossEntropyLoss()(mem_rec[step], targets)
 
-    return loss_val[0]/ num_steps + alpha * spks
+    return loss_val[0] / num_steps
 
 
 def output_transform(output):
@@ -101,7 +117,7 @@ class SpikeActivity(Metric):
         result = []
         for i, layer in enumerate(self.spikes):
             result.append(
-                float((sum(sum(sum(layer))) / (torch.numel(layer) * self.count*self.len)).cpu().detach().numpy()))
+                float((sum(sum(sum(layer))) / (torch.numel(layer) * self.count * self.len)).cpu().detach().numpy()))
         return result
 
 
@@ -232,28 +248,38 @@ class DirectCoding():
 
 config = {
     "num_steps": 64,
-    "gain": 0.1,
     "batch_size": 128,
-    "max_epochs": 50,
+    "neuron_type": "RS",
+    "max_epochs": 12,
+    "alpha": 0.9,
+    "beta": 0.8,
+    "dataset": Dataset.MNIST
 }
 
 if __name__ == "__main__":
+
+    if config["alpha"] <= config["beta"]:
+        sys.exit("invalid config")
+
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    clearml_logger = ClearMLLogger(task_name="IZH", project_name="Masterarbeit")
+    clearml_logger = ClearMLLogger(task_name="IZH base task", project_name="Masterarbeit")
     clearml_logger.get_task().connect(config)
-    model = IzhikevichNet(num_steps=config["num_steps"], num_input=28 * 28, neuron_type="FS").to(device)
+    model = IzhikevichNet(num_steps=config["num_steps"],
+                          num_input=28 * 28,
+                          neuron_type=config["neuron_type"],
+                          alpha=config["alpha"],
+                          beta=config["beta"]).to(device)
 
     transform = v2.Compose([
         v2.Resize((28, 28)),
         v2.Grayscale(),
         v2.ToImage(), v2.ToDtype(torch.float32, scale=True),
-        # v2.Normalize((0,), (1,)),
         v2.Lambda(lambda x: x.view(-1)),
         DirectCoding(num_steps=config["num_steps"]),
-        # ToSpikes(num_steps=config["num_steps"], gain=config["gain"]),
     ])
 
-    train_loader, val_loader = load_data(transform, config["batch_size"])
+    train_loader, val_loader = load_data(transform, config["batch_size"], dataset=config["dataset"])
 
 
     def init_weights(m):
@@ -261,8 +287,8 @@ if __name__ == "__main__":
             torch.nn.init.xavier_uniform_(m.weight, 1)
             m.bias.data.fill_(0.1)
 
-    model.apply(init_weights)
 
+    model.apply(init_weights)
 
     # optimizer = torch.optim.RMSprop(model.parameters(), lr=0.005)
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.0005, betas=(0.9, 0.999))
