@@ -1,5 +1,5 @@
 from clearml import Task
-from clearml.automation import HyperParameterOptimizer, GridSearch, RandomSearch
+from clearml.automation import HyperParameterOptimizer, GridSearch, RandomSearch, Objective
 from clearml.automation import UniformParameterRange, UniformIntegerParameterRange, LogUniformParameterRange, DiscreteParameterRange
 from clearml.automation.optuna import OptimizerOptuna
 
@@ -13,7 +13,7 @@ if __name__ == "__main__":
 
     task_id = Task.get_task(project_name="Masterarbeit", task_name="IZH base task").id
 
-    optimizer = HyperParameterOptimizer(
+    randomSearch = RandomSearch(
         # specifying the task to be optimized, task must be in system already so it can be cloned
         base_task_id=task_id,
         # setting the hyperparameters to optimize
@@ -25,21 +25,17 @@ if __name__ == "__main__":
             DiscreteParameterRange('lr', values=[0.1,0.01,0.001,0.0001]),
         ],
         # setting the objective metric we want to maximize/minimize
-        objective_metric_title='validation metrics',
-        objective_metric_series='loss',
-        objective_metric_sign='min',
 
-        # setting optimizer
-        optimizer_class=RandomSearch,
+        objective_metric=Objective('validation metrics', 'loss'),
+        num_concurrent_workers=10,
 
         # configuring optimization parameters
         execution_queue='default',
+        compute_time_limit=12000,
+        total_max_jobs=500,
         max_number_of_concurrent_tasks=2,
-        optimization_time_limit=240.,
-        compute_time_limit=120,
-        total_max_jobs=200,
         min_iteration_per_job=1000,
         max_iteration_per_job=5000,
     )
 
-    optimizer.start()
+    randomSearch.start()
