@@ -4,7 +4,6 @@ import torch
 
 
 class Izhikevich(SpikingNeuron):
-
     cfgs = {
         'RS': [[0.02, 0.2, -65, 8], [-70, -14]],
         'IB': [[0.02, 0.2, -55, 4], [-70, -14]],
@@ -23,6 +22,7 @@ class Izhikevich(SpikingNeuron):
                  learn_abcd=False,
                  time_resolution=1,
                  threshold=30.0,
+                 use_psp=True,
                  alpha=0.9,
                  beta=0.8,
                  spike_grad=None,
@@ -54,8 +54,10 @@ class Izhikevich(SpikingNeuron):
         self.register_buffer("time_resolution", torch.Tensor([time_resolution]))
         self.I_pre = torch.as_tensor(0)
         self.I_post = torch.as_tensor(0)
-        self.register_buffer("alpha", torch.as_tensor(alpha))
-        self.register_buffer("beta", torch.as_tensor(beta))
+        self.use_psp = use_psp
+        if (use_psp):
+            self.register_buffer("alpha", torch.as_tensor(alpha))
+            self.register_buffer("beta", torch.as_tensor(beta))
 
     def _register_buffer(self, a, b, c, d, learn_abcd):
         if not isinstance(a, torch.Tensor):
@@ -109,24 +111,11 @@ class Izhikevich(SpikingNeuron):
             raise NotImplementedError()
 
     def update_state(self, input_, u, v, I_pre, I_post):
-
-        #self.I = self.alpha * self.I + input_
-        #self.I_pre = self.alpha*self.I_pre.detach() + input_
-        #self.I_post = (self.beta*self.I_post.detach() - input_)
-
-        I_pre = self.alpha*I_pre + input_
-        I_post = self.beta*I_post - input_
-
-        dv = 0.04 * v * v + 5 * v + 140 - u + I_pre + I_post
+        if(self.use_psp):
+            I_pre = self.alpha * I_pre + input_
+            I_post = self.beta * I_post - input_
+            dv = 0.04 * v * v + 5 * v + 140 - u + I_pre + I_post
+        else:
+            dv = 0.04 * v * v + 5 * v + 140 - u + input_
         du = self.a * (self.b * (v + dv - dv) - u)
         return u + du / self.time_resolution, v + dv / self.time_resolution, I_pre, I_post
-
-    @classmethod
-    def detach_hidden(cls):
-        """Returns the hidden states, detached from the current graph.
-        Intended for use in truncated backpropagation through time where
-        hidden state variables are instance variables."""
-
-        for layer in range(len(cls.instances)):
-            if isinstance(cls.instances[layer], Izhikevich):
-                cls.instances[layer].I.detach_()

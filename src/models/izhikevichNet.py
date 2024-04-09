@@ -9,7 +9,7 @@ from neurons.lif import Leaky
 
 
 class IzhikevichNet(nn.Module):
-    def __init__(self, num_steps, num_input, neuron_type, alpha=0.95, beta=0.8, **kwargs):
+    def __init__(self, num_steps, num_input, neuron_type, alpha=0.95, beta=0.8,use_psp=True, **kwargs):
         super().__init__()
         self.num_steps = num_steps
         self.resolution = 1
@@ -22,7 +22,7 @@ class IzhikevichNet(nn.Module):
         # Initialize layers
         self.fc1 = nn.Linear(num_inputs, num_hidden[0])
         self.lif1 = IZH(*IZH.cfgs[neuron_type][0], threshold=30, time_resolution=1, graded_spikes_factor=1,
-                        alpha=alpha, beta=beta)
+                        alpha=alpha, beta=beta, use_psp=use_psp)
 
         self.fc2 = nn.Linear(num_hidden[0], num_hidden[1])
         # self.lif2 = IZH(*Izhikevich.cfgs[neuron_type][0], threshold=30, time_resolution=1, graded_spikes_factor=1, alpha=0.95, beta=0.8)

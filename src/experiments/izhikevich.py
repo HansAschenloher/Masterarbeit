@@ -31,7 +31,7 @@ class Dataset(Enum):
 def load_data(transform, batch_size, dataset: Dataset):
     if(dataset == Dataset.MNIST):
         return load_mnist(transform, batch_size)
-    elif(dataset == Dataset.FashionMNIST):
+    elif(dataset == Dataset.FASHION_MNIST):
         return load_fashion_mnist(transform, batch_size)
     else:
         raise ValueError("No valid dataset was provided")
@@ -247,29 +247,32 @@ class DirectCoding():
 
 
 config = {
+    "lr": 0.001,
     "num_steps": 64,
     "batch_size": 128,
     "neuron_type": "RS",
     "max_epochs": 12,
     "alpha": 0.9,
     "beta": 0.8,
-    "dataset": Dataset.MNIST
+    "dataset": Dataset.MNIST,
 }
 
 if __name__ == "__main__":
-
-    if config["alpha"] <= config["beta"]:
-        sys.exit("invalid config")
-
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    clearml_logger = ClearMLLogger(task_name="IZH base task", project_name="Masterarbeit")
+    clearml_logger = ClearMLLogger(task_name="IZH base task without psp", project_name="Masterarbeit/izh_hp_without_psp")
     clearml_logger.get_task().connect(config)
     model = IzhikevichNet(num_steps=config["num_steps"],
                           num_input=28 * 28,
                           neuron_type=config["neuron_type"],
                           alpha=config["alpha"],
-                          beta=config["beta"]).to(device)
+                          beta=config["beta"],
+                          use_psp=False).to(device)
+
+
+    if config["alpha"] <= config["beta"]:
+        clearml_logger.get_task().mark_completed(True, "invalid config", force=True)
+        sys.exit("invalid config")
+
 
     transform = v2.Compose([
         v2.Resize((28, 28)),
@@ -291,7 +294,7 @@ if __name__ == "__main__":
     model.apply(init_weights)
 
     # optimizer = torch.optim.RMSprop(model.parameters(), lr=0.005)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.0005, betas=(0.9, 0.999))
+    optimizer = torch.optim.AdamW(model.parameters(), lr=config["lr"], betas=(0.9, 0.999))
     criterion = loss
 
     trainer = create_supervised_trainer(model, optimizer, criterion, device)
