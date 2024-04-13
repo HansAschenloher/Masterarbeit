@@ -254,12 +254,12 @@ config = {
     "max_epochs": 12,
     "alpha": 0.9,
     "beta": 0.8,
-    "dataset": Dataset.MNIST,
+    "dataset": Dataset.FASHION_MNIST,
 }
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    clearml_logger = ClearMLLogger(task_name="IZH base task without psp", project_name="Masterarbeit/izh_hp_without_psp")
+    clearml_logger = ClearMLLogger(task_name="IZH base task without psp fashion", project_name="Masterarbeit/izh_hp_without_psp")
     clearml_logger.get_task().connect(config)
     model = IzhikevichNet(num_steps=config["num_steps"],
                           num_input=28 * 28,

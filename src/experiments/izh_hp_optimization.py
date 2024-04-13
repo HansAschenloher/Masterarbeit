@@ -11,7 +11,7 @@ if __name__ == "__main__":
         reuse_last_task_id=False
     )
 
-    task_id = Task.get_task(project_name="Masterarbeit/izh_hp_without_psp", task_name="IZH base task without psp").id
+    task_id = Task.get_task(project_name="Masterarbeit/izh_hp_without_psp", task_name="IZH base task without psp fashion").id
 
     randomSearch = GridSearch(
         # specifying the task to be optimized, task must be in system already so it can be cloned

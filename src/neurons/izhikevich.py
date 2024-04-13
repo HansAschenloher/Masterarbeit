@@ -19,6 +19,8 @@ class Izhikevich(SpikingNeuron):
                  b,
                  c,
                  d,
+                 initial_u=-14.0,
+                 initial_v=-70.0,
                  learn_abcd=False,
                  time_resolution=1,
                  threshold=30.0,
@@ -50,16 +52,16 @@ class Izhikevich(SpikingNeuron):
             learn_graded_spikes_factor,
         )
 
-        self._register_buffer(a, b, c, d, learn_abcd)
+        self._register_buffer(a, b, c, d, learn_abcd, initial_u, initial_v)
         self.register_buffer("time_resolution", torch.Tensor([time_resolution]))
-        self.I_pre = torch.as_tensor(0)
-        self.I_post = torch.as_tensor(0)
         self.use_psp = use_psp
-        if (use_psp):
-            self.register_buffer("alpha", torch.as_tensor(alpha))
-            self.register_buffer("beta", torch.as_tensor(beta))
 
-    def _register_buffer(self, a, b, c, d, learn_abcd):
+        self.register_buffer("alpha", torch.as_tensor(alpha))
+        self.register_buffer("beta", torch.as_tensor(beta))
+        self.register_buffer("i_pre", torch.as_tensor(0))
+        self.register_buffer("i_post", torch.as_tensor(0))
+
+    def _register_buffer(self, a, b, c, d, learn_abcd, initial_u, initial_v):
         if not isinstance(a, torch.Tensor):
             a = torch.as_tensor(float(a))
         if not isinstance(b, torch.Tensor):
@@ -78,25 +80,39 @@ class Izhikevich(SpikingNeuron):
             self.register_buffer("b", b)
             self.register_buffer("c", c)
             self.register_buffer("d", d)
+        self.register_buffer("u", torch.as_tensor(initial_u))
+        self.register_buffer("v", torch.as_tensor(initial_v))
 
     @staticmethod
     def init_mem():
         u, v = _SpikeTensor(init_flag=False), _SpikeTensor(init_flag=False)
         return u, v
 
-    def forward(self, input, u, v, I_pre, I_post):
+    def forward(self, input, u=None, v=None, i_pre=None, i_post=None):
+        if (self.init_hidden and u != None):
+            self.u = u
+        if (self.init_hidden and v != None):
+            self.v = v
+        if (self.init_hidden and i_pre != None and self.use_psp):
+            self.i_pre = i_pre
+        if (self.init_hidden and i_post != None and self.use_psp):
+            self.i_post = i_post
+
+        spk = 0
+        for i in range(int(self.time_resolution)):
+            self.reset = self.mem_reset(self.v)
+            self.u, self.v, self.i_pre, self.i_post = self.update_hidden(input, self.u, self.v, self.i_pre, self.i_post)
+            if spk == []:
+                spk = self.fire(self.v)
+            else:
+                spk += self.fire(self.v)
+
         if (self.init_hidden):
-            pass
+            if (self.output):
+                return spk, self.v
+            return spk
         else:
-            spk = 0
-            for i in range(int(self.time_resolution)):
-                self.reset = self.mem_reset(v)
-                u, v, I_pre, I_post = self.update_hidden(input, u, v, I_pre, I_post)
-                if spk == []:
-                    spk = self.fire(v)
-                else:
-                    spk += self.fire(v)
-            return spk, u, v, I_pre, I_post
+            return spk, self.u, self.v, self.i_pre, self.i_post
 
     def update_hidden(self, input_, u, v, I_pre, I_post):
         if self.reset_mechanism_val == 0:  # reset by subtraction
@@ -111,7 +127,7 @@ class Izhikevich(SpikingNeuron):
             raise NotImplementedError()
 
     def update_state(self, input_, u, v, I_pre, I_post):
-        if(self.use_psp):
+        if (self.use_psp):
             I_pre = self.alpha * I_pre + input_
             I_post = self.beta * I_post - input_
             dv = 0.04 * v * v + 5 * v + 140 - u + I_pre + I_post
