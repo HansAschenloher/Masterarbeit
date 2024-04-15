@@ -1,13 +1,16 @@
+import operator
 import sys
-from typing import List
+from enum import Enum, auto
+from typing import List, Any, Union, Optional, Callable
 
 import clearml
 import ignite
 import numpy as np
 import torch
 from clearml import Logger
+from ignite.contrib.handlers.base_logger import BaseHandler
 from ignite.contrib.handlers.clearml_logger import *
-from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
+from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator, Engine
 from ignite.handlers import Checkpoint
 from ignite.metrics import Accuracy, Loss, Fbeta, Precision
 from ignite.metrics import ConfusionMatrix
@@ -18,20 +21,22 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST, FashionMNIST
 from torchvision.transforms import v2
-from enum import  Enum, auto
+from functools import reduce
 
 sys.path.append("../")
 
 from models.izhikevichNet import IzhikevichNet
 
+
 class Dataset(Enum):
     MNIST = auto()
     FASHION_MNIST = auto()
 
+
 def load_data(transform, batch_size, dataset: Dataset):
-    if(dataset == Dataset.MNIST):
+    if (dataset == Dataset.MNIST):
         return load_mnist(transform, batch_size)
-    elif(dataset == Dataset.FASHION_MNIST):
+    elif (dataset == Dataset.FASHION_MNIST):
         return load_fashion_mnist(transform, batch_size)
     else:
         raise ValueError("No valid dataset was provided")
@@ -45,12 +50,13 @@ def load_mnist(transform, batch_size):
         data_train = MNIST(data_path, train=True, download=False, transform=transform)
         data_test = MNIST(data_path, train=False, download=False, transform=transform)
     except Exception:
-        data_train =MNIST(data_path, train=True, download=True, transform=transform)
+        data_train = MNIST(data_path, train=True, download=True, transform=transform)
         data_test = MNIST(data_path, train=False, download=True, transform=transform)
     train_loader = DataLoader(data_train, batch_size=batch_size, shuffle=True, drop_last=True)
     test_loader = DataLoader(data_test, batch_size=batch_size, shuffle=True, drop_last=True)
 
     return train_loader, test_loader
+
 
 def load_fashion_mnist(transform, batch_size):
     data_path = '/tmp/data/fashion_mnist'
@@ -67,12 +73,10 @@ def load_fashion_mnist(transform, batch_size):
 
     return train_loader, test_loader
 
+
 def loss(prediction, targets, **kwargs):
     loss_val = torch.zeros(1, device=device)
     mem_rec = prediction[1]
-    spks = SpikeActivity()
-    spks.update([prediction])
-    spks = sum(spks.compute())
     num_steps = len(mem_rec)
     for step in range(num_steps):
         loss_val += nn.CrossEntropyLoss()(mem_rec[step], targets)
@@ -121,6 +125,60 @@ class SpikeActivity(Metric):
         return result
 
 
+#################################
+class SpikeCountHandler(BaseHandler):
+    def __init__(self,
+                 model: nn.Module,
+                 tag: Optional[str] = None,
+                 whitelist: Optional[Union[List[str], Callable[[str, nn.Parameter], bool]]] = None,
+                 ):
+        if not isinstance(model, torch.nn.Module):
+            raise TypeError(f"Argument model should be of type torch.nn.Module, but given {type(model)}")
+
+        self.model = model
+        self.tag = tag
+
+        named_modules = {}
+        if whitelist is None:
+            named_modules = dict(model.named_modules())
+        elif callable(whitelist):
+            for n, m in model.named_modules():
+                if whitelist(n, m):
+                    named_modules[n] = m
+        else:
+            for n, m in model.named_modules():
+                for item in whitelist:
+                    if n.startswith(item):
+                        named_modules[n] = m
+
+        self.named_modules = named_modules
+
+    def __call__(self, engine: Engine, logger: Any, event_name: Union[str, Events]) -> None:
+        if not isinstance(logger, ClearMLLogger):
+            raise RuntimeError("Handler WeightsScalarHandler works only with ClearMLLogger")
+
+        global_step = engine.state.get_event_attrib_value(event_name)
+        tag_prefix = f"{self.tag}/" if self.tag else ""
+        for name, module in self.named_modules.items():
+            if (hasattr(module, "log_spikes")):
+                if module.log_spikes:
+                    if (hasattr(module, "spike_log")):
+                        spks = torch.stack(module.spike_log, dim=0)
+                        spike_density = torch.sum(spks)/reduce(operator.mul, spks.shape)
+                        module.spike_log = []
+                        title_name, _, series_name = name.partition(".")
+                        logger.clearml_logger.report_scalar(
+                            title=f"{tag_prefix}_spike_density/{title_name}",
+                            series=series_name,
+                            value=spike_density,
+                            iteration=global_step,
+                        )
+                    else:
+                        raise NotImplementedError("in order to log spikes, the layer needs a 'spike_log' attribute")
+
+
+#################################
+
 def attatch_logging_handlers(trainer):
     val_metrics = {
         "accuracy": Accuracy(output_transform=output_transform),
@@ -129,8 +187,8 @@ def attatch_logging_handlers(trainer):
         "F1": Fbeta(beta=1, output_transform=output_transform),
         "recall": Recall(output_transform=output_transform, average=True),
         "precision": Precision(output_transform=output_transform, average=True),
-        "spike_activity_layer_1": SpikeActivity(output_transform=lambda x: x)[0],
-        "spike_activity_layer_2": SpikeActivity(output_transform=lambda x: x)[1],
+        # "spike_activity_layer_1": SpikeActivity(output_transform=lambda x: x)[0],
+        # "spike_activity_layer_2": SpikeActivity(output_transform=lambda x: x)[1],
     }
 
     train_evaluator = create_supervised_evaluator(model, metrics=val_metrics, device=device)
@@ -222,6 +280,12 @@ def attatch_logging_handlers(trainer):
         event_name=Events.EPOCH_COMPLETED
     )
 
+    clearml_logger.attach(
+        trainer,
+        log_handler=SpikeCountHandler(model),
+        event_name=Events.ITERATION_COMPLETED(every=25)
+    )
+
 
 class ToSpikes():
     def __init__(self, num_steps, gain=0.2):
@@ -247,19 +311,19 @@ class DirectCoding():
 
 
 config = {
-    "lr": 0.001,
-    "num_steps": 64,
-    "batch_size": 128,
+    "lr": 0.01,
+    "num_steps": 128,
+    "batch_size": 32,
     "neuron_type": "RS",
-    "max_epochs": 12,
-    "alpha": 0.9,
-    "beta": 0.8,
+    "max_epochs": 50,
+    "alpha": 0.95,
+    "beta": 0.85,
     "dataset": Dataset.FASHION_MNIST,
 }
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    clearml_logger = ClearMLLogger(task_name="IZH base task without psp fashion", project_name="Masterarbeit/izh_hp_without_psp")
+    clearml_logger = ClearMLLogger(task_name="IZH base task without psp fashion", project_name="Masterarbeit/test")
     clearml_logger.get_task().connect(config)
     model = IzhikevichNet(num_steps=config["num_steps"],
                           num_input=28 * 28,
@@ -268,11 +332,9 @@ if __name__ == "__main__":
                           beta=config["beta"],
                           use_psp=False).to(device)
 
-
     if config["alpha"] <= config["beta"]:
         clearml_logger.get_task().mark_completed(True, "invalid config", force=True)
         sys.exit("invalid config")
-
 
     transform = v2.Compose([
         v2.Resize((28, 28)),
@@ -287,14 +349,17 @@ if __name__ == "__main__":
 
     def init_weights(m):
         if isinstance(m, nn.Linear):
-            torch.nn.init.xavier_uniform_(m.weight, 1)
-            m.bias.data.fill_(0.1)
+            #torch.nn.init.xavier_uniform_(m.weight, 1)
+            m.weights = torch.nn.init.normal_(m.weight, 1.5, 1)
+            m.bias.data.fill_(10)
 
 
     model.apply(init_weights)
+    print(model.eval())
 
-    # optimizer = torch.optim.RMSprop(model.parameters(), lr=0.005)
+    #optimizer = torch.optim.RMSprop(model.parameters(), lr=0.005)
     optimizer = torch.optim.AdamW(model.parameters(), lr=config["lr"], betas=(0.9, 0.999))
+    #optimizer = torch.optim.SGD(model.parameters(), lr=config["lr"])
     criterion = loss
 
     trainer = create_supervised_trainer(model, optimizer, criterion, device)
