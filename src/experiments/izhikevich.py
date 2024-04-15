@@ -323,7 +323,7 @@ config = {
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    clearml_logger = ClearMLLogger(task_name="IZH base task without psp fashion", project_name="Masterarbeit/test")
+    clearml_logger = ClearMLLogger(task_name="IZH base task without psp fashion 3", project_name="Masterarbeit/test")
     clearml_logger.get_task().connect(config)
     model = IzhikevichNet(num_steps=config["num_steps"],
                           num_input=28 * 28,
@@ -357,9 +357,7 @@ if __name__ == "__main__":
     model.apply(init_weights)
     print(model.eval())
 
-    #optimizer = torch.optim.RMSprop(model.parameters(), lr=0.005)
     optimizer = torch.optim.AdamW(model.parameters(), lr=config["lr"], betas=(0.9, 0.999))
-    #optimizer = torch.optim.SGD(model.parameters(), lr=config["lr"])
     criterion = loss
 
     trainer = create_supervised_trainer(model, optimizer, criterion, device)
