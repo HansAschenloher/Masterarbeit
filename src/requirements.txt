@@ -1,5 +1,6 @@
 torch==2.1.1
-snntorch==0.8.1
+#snntorch==0.8.1
+git+https://github.com/HansAschenloher/snntorch.git
 clearml
 pytorch-ignite
 matplotlib
