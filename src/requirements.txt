@@ -4,7 +4,7 @@ clearml~=1.13.2
 pytorch-ignite
 matplotlib~=3.8.2
 numpy~=1.24.4
-torchvision~=0.16.1+adc3221
+#torchvision~=0.16.1+adc3221
 tonic
 optuna
 

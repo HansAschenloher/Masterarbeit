@@ -77,7 +77,7 @@ config = {
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    clearml_logger = ClearMLLogger(task_name="LIF base", project_name="Masterarbeit/LIF")
+    clearml_logger = ClearMLLogger(task_name="LIF base fashion_mnist", project_name="Masterarbeit/LIF")
     clearml_logger.get_task().connect(config)
 
     model = SimpleFCNet(num_steps=config["num_steps"],
