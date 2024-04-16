@@ -3,3 +3,4 @@ __spike_generation__ = [
 ]
 
 from .DirectCoding import DirectCoding
+from .RateCoding import RateCoding
