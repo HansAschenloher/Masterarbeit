@@ -4,8 +4,6 @@ import snntorch as snn
 import torch
 import torch.nn as nn
 
-sys.path.append('..')
-
 class IzhikevichNet(nn.Module):
     def __init__(self, beta, num_steps, num_input, **kwargs):
         super().__init__()
@@ -20,7 +18,7 @@ class IzhikevichNet(nn.Module):
                 layers.append(nn.Linear(num_in, layer))
                 if i == len(layer_config) - 2:
                     layers.append(
-                        snn.Leaky(beta=beta, init_hidden=True, output=True, reset_mechanism="none")
+                        snn.Leaky(beta=beta, init_hidden=True, output=True, reset_mechanism="subtract", log_spikes=True)
                     )
                 else:
                     layers.append(

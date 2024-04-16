@@ -1,31 +1,25 @@
-import operator
 import sys
 from enum import Enum, auto
-from typing import List, Any, Union, Optional, Callable
 
 import clearml
 import ignite
 import numpy as np
 import torch
 from clearml import Logger
-from ignite.contrib.handlers.base_logger import BaseHandler
 from ignite.contrib.handlers.clearml_logger import *
-from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator, Engine
+from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
 from ignite.handlers import Checkpoint
 from ignite.metrics import Accuracy, Loss, Fbeta, Precision
 from ignite.metrics import ConfusionMatrix
-from ignite.metrics.metric import reinit__is_reduced, sync_all_reduce, Metric
 from ignite.metrics.recall import Recall
 from snntorch import spikegen
 from torch import nn
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST, FashionMNIST
 from torchvision.transforms import v2
-from functools import reduce
 
-sys.path.append("../")
-
-from models.izhikevichNet import IzhikevichNet
+from models import IzhikevichNet
+from utils import SpikeDensityHandler
 
 
 class Dataset(Enum):
@@ -91,94 +85,6 @@ def output_transform(output):
     return y_pred, y
 
 
-class SpikeActivity(Metric):
-
-    def __init__(self, output_transform=lambda x: x, device="cpu"):
-        self.spikes = []
-        self.count = 0
-        super(SpikeActivity, self).__init__(output_transform=output_transform, device=device)
-
-    @reinit__is_reduced
-    def reset(self):
-        self.count = 0
-        self.spikes = []
-        super(SpikeActivity, self).reset()
-
-    @reinit__is_reduced
-    def update(self, output):
-        output: List[torch.Tensor] = output[0][2]
-        for i, spk in enumerate(output):
-            self.len = len(spk)
-            spk = torch.stack(spk, dim=0)
-            if (len(self.spikes) <= i):
-                self.spikes.append(spk)
-            else:
-                self.spikes[i] += spk
-            self.count += 1
-
-    @sync_all_reduce("_num_examples", "_num_correct:SUM")
-    def compute(self):
-        result = []
-        for i, layer in enumerate(self.spikes):
-            result.append(
-                float((sum(sum(sum(layer))) / (torch.numel(layer) * self.count * self.len)).cpu().detach().numpy()))
-        return result
-
-
-#################################
-class SpikeCountHandler(BaseHandler):
-    def __init__(self,
-                 model: nn.Module,
-                 tag: Optional[str] = None,
-                 whitelist: Optional[Union[List[str], Callable[[str, nn.Parameter], bool]]] = None,
-                 ):
-        if not isinstance(model, torch.nn.Module):
-            raise TypeError(f"Argument model should be of type torch.nn.Module, but given {type(model)}")
-
-        self.model = model
-        self.tag = tag
-
-        named_modules = {}
-        if whitelist is None:
-            named_modules = dict(model.named_modules())
-        elif callable(whitelist):
-            for n, m in model.named_modules():
-                if whitelist(n, m):
-                    named_modules[n] = m
-        else:
-            for n, m in model.named_modules():
-                for item in whitelist:
-                    if n.startswith(item):
-                        named_modules[n] = m
-
-        self.named_modules = named_modules
-
-    def __call__(self, engine: Engine, logger: Any, event_name: Union[str, Events]) -> None:
-        if not isinstance(logger, ClearMLLogger):
-            raise RuntimeError("Handler WeightsScalarHandler works only with ClearMLLogger")
-
-        global_step = engine.state.get_event_attrib_value(event_name)
-        tag_prefix = f"{self.tag}/" if self.tag else ""
-        for name, module in self.named_modules.items():
-            if (hasattr(module, "log_spikes")):
-                if module.log_spikes:
-                    if (hasattr(module, "spike_log")):
-                        spks = torch.stack(module.spike_log, dim=0)
-                        spike_density = torch.sum(spks)/reduce(operator.mul, spks.shape)
-                        module.spike_log = []
-                        title_name, _, series_name = name.partition(".")
-                        logger.clearml_logger.report_scalar(
-                            title=f"{tag_prefix}_spike_density/{title_name}",
-                            series=series_name,
-                            value=spike_density,
-                            iteration=global_step,
-                        )
-                    else:
-                        raise NotImplementedError("in order to log spikes, the layer needs a 'spike_log' attribute")
-
-
-#################################
-
 def attatch_logging_handlers(trainer):
     val_metrics = {
         "accuracy": Accuracy(output_transform=output_transform),
@@ -187,8 +93,6 @@ def attatch_logging_handlers(trainer):
         "F1": Fbeta(beta=1, output_transform=output_transform),
         "recall": Recall(output_transform=output_transform, average=True),
         "precision": Precision(output_transform=output_transform, average=True),
-        # "spike_activity_layer_1": SpikeActivity(output_transform=lambda x: x)[0],
-        # "spike_activity_layer_2": SpikeActivity(output_transform=lambda x: x)[1],
     }
 
     train_evaluator = create_supervised_evaluator(model, metrics=val_metrics, device=device)
@@ -282,7 +186,7 @@ def attatch_logging_handlers(trainer):
 
     clearml_logger.attach(
         trainer,
-        log_handler=SpikeCountHandler(model),
+        log_handler=SpikeDensityHandler(model),
         event_name=Events.ITERATION_COMPLETED(every=25)
     )
 
@@ -349,9 +253,9 @@ if __name__ == "__main__":
 
     def init_weights(m):
         if isinstance(m, nn.Linear):
-            #torch.nn.init.xavier_uniform_(m.weight, 1)
-            m.weights = torch.nn.init.normal_(m.weight, 1.5, 1)
-            m.bias.data.fill_(10)
+            torch.nn.init.xavier_uniform_(m.weight, 1)
+            # m.weights = torch.nn.init.normal_(m.weight, 1.5, 1)
+            m.bias.data.fill_(0.1)
 
 
     model.apply(init_weights)
