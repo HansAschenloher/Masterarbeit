@@ -35,7 +35,7 @@ if __name__ == "__main__":
         execution_queue='default',
         compute_time_limit=12000,
         total_max_jobs=200,
-        max_number_of_concurrent_tasks=2,
+        max_number_of_concurrent_tasks=5,
         min_iteration_per_job=1000,
         max_iteration_per_job=10000,
     )

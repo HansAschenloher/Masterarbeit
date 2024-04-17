@@ -112,5 +112,5 @@ def attach_logging_handlers(clearml_logger, trainer, criterion, train_loader, va
     clearml_logger.attach(
         trainer,
         log_handler=SpikeDensityHandler(model),
-        event_name=Events.ITERATION_COMPLETED(every=25)
+        event_name=Events.ITERATION_COMPLETED(every=50)
     )
