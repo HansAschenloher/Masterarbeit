@@ -83,9 +83,9 @@ config = {
     "batch_size": 128,
     "max_epochs": 10,
     "beta": 0.55,
-    "dataset": Dataset.FASHION_MNIST,
+    "dataset": Dataset.MNIST,
     "neuron_model": NeuronModels.LIF,
-    "neural_encoding": NeuralEncoding.DIRECT_CODING,
+    "neural_encoding": NeuralEncoding.RATE_CODING,
     "reset_mechanism": "subtract",
     "layer_config": [28 * 28, 50, 20, 10]
 }
