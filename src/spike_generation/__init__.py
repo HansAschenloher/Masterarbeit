@@ -1,6 +1,9 @@
 __spike_generation__ = [
-    "DirectCoding"
+    "DirectCoding",
+    "RateCoding",
+    "LatencyCoding"
 ]
 
 from .DirectCoding import DirectCoding
 from .RateCoding import RateCoding
+from .LatencyCoding import LatencyCoding

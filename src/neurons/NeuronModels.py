@@ -6,3 +6,4 @@ class NeuronModels():
     IZHIKEVICH = auto()
     SYNAPTIC = auto()
     ALPHA = ()
+    RELU = auto()
