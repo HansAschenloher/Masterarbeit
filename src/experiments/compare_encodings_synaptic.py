@@ -87,7 +87,7 @@ config = {
     "beta": 0.5,
     "alpha": 0.55,
     "dataset": Dataset.FASHION_MNIST,
-    "neuron_model": NeuronModels.SYNAPTIC.__str__(),
+    "neuron_model": NeuronModels.SYNAPTIC,
     "neural_encoding": NeuralEncoding.DIRECT_CODING,
     "reset_mechanism": "subtract",
     "layer_config": [28 * 28, 50, 20, 10]

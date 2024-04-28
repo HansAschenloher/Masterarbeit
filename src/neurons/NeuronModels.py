@@ -1,9 +1,9 @@
 from enum import Enum, auto
 
-class NeuronModels():
+class NeuronModels(Enum):
     LIF = auto()
     IF = auto()
     IZHIKEVICH = auto()
     SYNAPTIC = auto()
-    ALPHA = ()
+    ALPHA = auto()
     RELU = auto()
