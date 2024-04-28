@@ -65,14 +65,6 @@ def attach_logging_handlers(clearml_logger, trainer, criterion, train_loader, va
     )
 
     clearml_logger.attach_output_handler(
-        val_evaluator,
-        event_name=Events.EPOCH_COMPLETED,
-        tag="spike activation",
-        metric_names=["spike_activity_layer_1", "spike_activity_layer_2"],
-        global_step_transform=global_step_from_engine(trainer),
-    )
-
-    clearml_logger.attach_output_handler(
         train_evaluator,
         event_name=Events.EPOCH_COMPLETED,
         tag="training metrics",
