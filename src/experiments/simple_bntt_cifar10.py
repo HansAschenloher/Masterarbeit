@@ -21,10 +21,10 @@ sys.path.append("../")
 import models.bntt as bntt
 
 
-def load_data(transform, batch_size):
+def load_data(transform, test_transform, batch_size):
     data_path = '/home/hans/src/Masterarbeit/src/notebooks/cifar10'
     data_train = CIFAR10(data_path, train=True, download=True, transform=transform)
-    data_test = CIFAR10(data_path, train=False, download=True, transform=transform)
+    data_test = CIFAR10(data_path, train=False, download=True, transform=test_transform)
     train_loader = DataLoader(data_train, batch_size=batch_size, shuffle=True, drop_last=True)
     test_loader = DataLoader(data_test, batch_size=batch_size, shuffle=True, drop_last=True)
 
@@ -179,7 +179,7 @@ def output_transform(output):
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    clearml_logger = ClearMLLogger(task_name="myBNTT test",
+    clearml_logger = ClearMLLogger(task_name="myBNTT + Dropout - test augmentation",
                                    project_name="Masterarbeit/Test")
     clearml_logger.get_task().connect(config)
     img_size = 32
@@ -200,7 +200,13 @@ if __name__ == "__main__":
         DirectCoding(num_steps=config["num_steps"])
     ])
 
-    train_loader, val_loader = load_data(transform, config["batch_size"])
+    test_transform = v2.Compose([
+        v2.ToTensor(),
+        v2.Normalize((0.4914, 0.822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        DirectCoding(num_steps=config["num_steps"])
+    ])
+
+    train_loader, val_loader = load_data(transform,test_transform, config["batch_size"])
 
     optimizer = torch.optim.SGD(model.parameters(), lr=config["lr"], momentum=0.9, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=40, gamma=0.1)

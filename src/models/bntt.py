@@ -67,7 +67,9 @@ def make_layers(cfg: List[Union[str, int]], batch_norm: bool = False, num_steps=
                     layers += [conv2d,
                                BatchNorm2dThroughTime(num_steps=num_steps, num_features=value, eps=1e-4, momentum=0.1,
                                                       affine=affine_flag),
-                               snn.Leaky(beta=beta, init_hidden=True, spike_grad=Surrogate_BP_Function.apply)]
+                               snn.Leaky(beta=beta, init_hidden=True, spike_grad=Surrogate_BP_Function.apply),
+                               nn.Dropout(0.2)
+                               ]
                 else:
                     layers += [conv2d, snn.Leaky(beta=beta, init_hidden=True)]
                 in_channels = value
@@ -170,6 +172,7 @@ class VGG(nn.Module):
         self.features = features
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         classifier_hidden_layer = 4096
+        p = 0.2
         self.classifier = TemporalSequential(num_steps,
                                              nn.Linear(512, classifier_hidden_layer, bias=False),
                                              BatchNorm1dThroughTime(self.num_steps, classifier_hidden_layer, eps=1e-4,
@@ -177,6 +180,7 @@ class VGG(nn.Module):
                                                                     affine=True),
                                              snn.Leaky(beta=self.beta, init_hidden=True,
                                                        spike_grad=Surrogate_BP_Function.apply),
+                                             nn.Dropout(p=p),
                                              nn.Linear(classifier_hidden_layer, num_classes, bias=False),
                                              )
         # Init weights
@@ -191,7 +195,7 @@ class VGG(nn.Module):
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         utils.reset(self.features)
         utils.reset(self.classifier)
-        mem_fc2 = torch.zeros(self.num_classes, device=torch.get_device(x))
+        mem_fc2 = torch.zeros((x.shape[0], self.num_classes), device=torch.get_device(x))
         for t in range(self.num_steps):
             spk_x = self.features(x[:, t], t)
             spk_x = self.avgpool(spk_x)
