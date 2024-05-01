@@ -1,8 +1,6 @@
 from clearml import Task
-from clearml.automation import HyperParameterOptimizer, GridSearch, Objective
-from clearml.automation import UniformParameterRange, UniformIntegerParameterRange, LogUniformParameterRange, \
-    DiscreteParameterRange
-from clearml.automation.optuna import OptimizerOptuna
+from clearml.automation import GridSearch, Objective
+from clearml.automation import UniformParameterRange, DiscreteParameterRange
 
 if __name__ == "__main__":
     task = Task.init(

@@ -6,9 +6,6 @@ from ignite.engine import create_supervised_trainer
 from torch import nn
 from torchvision.transforms import v2
 
-import sys
-sys.path.append("..")
-
 from neurons import NeuronModels
 from spike_generation import DirectCoding
 from utils import Dataset, load_data, attach_logging_handlers
@@ -26,11 +23,13 @@ class SimpleFCNet(nn.Module):
                 layers.append(nn.Linear(num_in, layer))
                 if i == len(layer_config) - 2:
                     layers.append(
-                        snn.Synaptic(alpha=alpha, beta=beta, init_hidden=True, output=True, reset_mechanism="none", log_spikes=False)
+                        snn.Synaptic(alpha=alpha, beta=beta, init_hidden=True, output=True, reset_mechanism="none",
+                                     log_spikes=False)
                     )
                 else:
-                    layers.append(snn.Synaptic(alpha=alpha, beta=beta, init_hidden=True, output=False, reset_mechanism=reset_mechanism,
-                                            log_spikes=True))
+                    layers.append(snn.Synaptic(alpha=alpha, beta=beta, init_hidden=True, output=False,
+                                               reset_mechanism=reset_mechanism,
+                                               log_spikes=True))
                 num_in = layer
 
         self.net = nn.Sequential(*layers)

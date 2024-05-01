@@ -25,7 +25,7 @@ class SimpleFC(nn.Module):
         spk2_rec = []
         mem2_rec = []
         for step in range(self.num_steps):
-            cur1 = self.fc1(x[:,step])
+            cur1 = self.fc1(x[:, step])
             spk1, mem1 = self.lif1(cur1, mem1)
             cur2 = self.fc2(spk1)
             spk2, mem2 = self.lif2(cur2, mem2)

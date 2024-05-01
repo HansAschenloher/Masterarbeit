@@ -1,5 +1,3 @@
-import sys
-
 import ignite
 import numpy as np
 import torch
@@ -16,13 +14,11 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 from torchvision.transforms import v2
 
-sys.path.append("../")
-
 import models.bntt as bntt
 
 
 def load_data(transform, test_transform, batch_size):
-    data_path = '/home/hans/src/Masterarbeit/src/notebooks/cifar10'
+    data_path = '/notebooks/cifar10'
     data_train = CIFAR10(data_path, train=True, download=True, transform=transform)
     data_test = CIFAR10(data_path, train=False, download=True, transform=test_transform)
     train_loader = DataLoader(data_train, batch_size=batch_size, shuffle=True, drop_last=True)
@@ -170,12 +166,14 @@ config = {
     "BNTT": True,
 }
 
+
 def output_transform(output):
     return output
     y_pred, y = output
     _, idx = y_pred[0].sum(dim=0).max(1)
     y_pred = ignite.utils.to_onehot(idx.long(), 10)
     return y_pred, y
+
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -206,7 +204,7 @@ if __name__ == "__main__":
         DirectCoding(num_steps=config["num_steps"])
     ])
 
-    train_loader, val_loader = load_data(transform,test_transform, config["batch_size"])
+    train_loader, val_loader = load_data(transform, test_transform, config["batch_size"])
 
     optimizer = torch.optim.SGD(model.parameters(), lr=config["lr"], momentum=0.9, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=40, gamma=0.1)
@@ -215,9 +213,11 @@ if __name__ == "__main__":
     trainer = create_supervised_trainer(model, optimizer, criterion, device)
     attatch_logging_handlers(trainer)
 
+
     @trainer.on(Events.EPOCH_COMPLETED)
     def adjust_lr(trainer: ignite.engine.Engine):
         adjust_learning_rate(optimizer, trainer.state.epoch, trainer.state.max_epochs)
+
 
     trainer.run(train_loader, max_epochs=config["max_epochs"])
     clearml_logger.get_task().completed()

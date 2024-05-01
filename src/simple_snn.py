@@ -2,7 +2,7 @@ import clearml
 import ignite
 import numpy as np
 import torch
-from clearml import Logger, OutputModel
+from clearml import Logger
 from ignite.contrib.handlers.clearml_logger import *
 from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
 from ignite.handlers import Checkpoint
@@ -14,9 +14,6 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST
 from torchvision.transforms import v2
-import sys
-
-sys.path.append("../")
 
 from models.fc_snn import SimpleFC
 
@@ -164,6 +161,7 @@ class ToSpikes():
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(num_steps={self.num_steps}, gain={self.gain})"
 
+
 config = {
     "num_steps": 64,
     "beta": 0.9,
@@ -176,7 +174,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     clearml_logger = ClearMLLogger(task_name="simple snn", project_name="Masterarbeit")
     clearml_logger.get_task().connect(config)
-    model = SimpleFC(config["beta"], num_steps=config["num_steps"], num_input=28*28).to(device)
+    model = SimpleFC(config["beta"], num_steps=config["num_steps"], num_input=28 * 28).to(device)
 
     transform = v2.Compose([
         v2.Resize((28, 28)),

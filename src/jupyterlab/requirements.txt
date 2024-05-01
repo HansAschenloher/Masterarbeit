@@ -6,3 +6,4 @@ snntorch
 torchvision
 tonic
 clearml
+seaborn

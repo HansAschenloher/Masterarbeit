@@ -1,8 +1,7 @@
 from clearml import Task
+from clearml.automation import DiscreteParameterRange
 from clearml.automation import RandomSearch, Objective
-from clearml.automation import UniformParameterRange, DiscreteParameterRange
-import sys
-sys.path.append("..")
+
 from utils import Dataset
 
 if __name__ == "__main__":

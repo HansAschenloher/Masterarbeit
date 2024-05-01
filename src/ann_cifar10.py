@@ -1,6 +1,3 @@
-import sys
-
-import ignite
 import numpy as np
 import torch
 import torchvision.models
@@ -17,11 +14,9 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 from torchvision.transforms import v2
 
-sys.path.append("../")
-
 
 def load_data(transform, test_transform, batch_size):
-    data_path = '/home/hans/src/Masterarbeit/src/notebooks/cifar10'
+    data_path = '/notebooks/cifar10'
     data_train = CIFAR10(data_path, train=True, download=True, transform=transform)
     data_test = CIFAR10(data_path, train=False, download=True, transform=test_transform)
     train_loader = DataLoader(data_train, batch_size=batch_size, shuffle=True, drop_last=True)

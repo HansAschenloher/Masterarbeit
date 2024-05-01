@@ -2,7 +2,7 @@ import clearml
 import ignite
 import numpy as np
 import torch
-from clearml import Logger, OutputModel
+from clearml import Logger
 from ignite.contrib.handlers.clearml_logger import *
 from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
 from ignite.handlers import Checkpoint
@@ -14,9 +14,6 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST
 from torchvision.transforms import v2
-import sys
-
-sys.path.append("../")
 
 from models.second_order_neuron_snn import SimpleFC
 
@@ -163,6 +160,7 @@ class ToSpikes():
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(num_steps={self.num_steps}, gain={self.gain})"
+
 
 config = {
     "num_steps": 64,

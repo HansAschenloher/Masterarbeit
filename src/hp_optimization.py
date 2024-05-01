@@ -1,6 +1,6 @@
 from clearml import Task
 from clearml.automation import HyperParameterOptimizer
-from clearml.automation import UniformParameterRange, UniformIntegerParameterRange, LogUniformParameterRange, DiscreteParameterRange
+from clearml.automation import UniformParameterRange, UniformIntegerParameterRange, DiscreteParameterRange
 from clearml.automation.optuna import OptimizerOptuna
 
 if __name__ == "__main__":

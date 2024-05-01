@@ -6,9 +6,6 @@ from ignite.engine import create_supervised_trainer
 from torch import nn
 from torchvision.transforms import v2
 
-import sys
-sys.path.append("..")
-
 from neurons import NeuronModels
 from spike_generation import DirectCoding
 from utils import Dataset, load_data, attach_logging_handlers
