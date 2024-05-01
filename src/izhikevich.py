@@ -227,7 +227,7 @@ config = {
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    clearml_logger = ClearMLLogger(task_name="IZH base task without psp fashion 3", project_name="Masterarbeit/test")
+    clearml_logger = ClearMLLogger(task_name="IZH base task without psp fashion", project_name="Masterarbeit/Izhikevich")
     clearml_logger.get_task().connect(config)
     model = IzhikevichNet(num_steps=config["num_steps"],
                           num_input=28 * 28,
@@ -254,7 +254,6 @@ if __name__ == "__main__":
     def init_weights(m):
         if isinstance(m, nn.Linear):
             torch.nn.init.xavier_uniform_(m.weight, 1)
-            # m.weights = torch.nn.init.normal_(m.weight, 1.5, 1)
             m.bias.data.fill_(0.1)
 
 

@@ -51,7 +51,7 @@ configurations = {
 
 
 def make_layers(cfg: List[Union[str, int]], batch_norm: bool = False, num_steps=25, beta=0.95,
-                affine_flag=True) -> nn.Module:
+                affine_flag=True, dropout_p=0.0) -> nn.Module:
     layers: List[nn.Module] = []
     in_channels = 3
     for layer in cfg:
@@ -68,7 +68,7 @@ def make_layers(cfg: List[Union[str, int]], batch_norm: bool = False, num_steps=
                                BatchNorm2dThroughTime(num_steps=num_steps, num_features=value, eps=1e-4, momentum=0.1,
                                                       affine=affine_flag),
                                snn.Leaky(beta=beta, init_hidden=True, spike_grad=Surrogate_BP_Function.apply),
-                               nn.Dropout(0.2)
+                               nn.Dropout(dropout_p)
                                ]
                 else:
                     layers += [conv2d, snn.Leaky(beta=beta, init_hidden=True)]
@@ -164,7 +164,7 @@ class Surrogate_BP_Function(torch.autograd.Function):
 
 
 class VGG(nn.Module):
-    def __init__(self, features: nn.Module, num_classes: int = 10, num_steps=64, beta=0.95):
+    def __init__(self, features: nn.Module, num_classes: int = 10, num_steps=64, beta=0.95, dropout_p=0.0):
         super().__init__()
         self.num_steps = num_steps
         self.num_classes = num_classes
@@ -172,7 +172,6 @@ class VGG(nn.Module):
         self.features = features
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         classifier_hidden_layer = 4096
-        p = 0.2
         self.classifier = TemporalSequential(num_steps,
                                              nn.Linear(512, classifier_hidden_layer, bias=False),
                                              BatchNorm1dThroughTime(self.num_steps, classifier_hidden_layer, eps=1e-4,
@@ -180,7 +179,7 @@ class VGG(nn.Module):
                                                                     affine=True),
                                              snn.Leaky(beta=self.beta, init_hidden=True,
                                                        spike_grad=Surrogate_BP_Function.apply),
-                                             nn.Dropout(p=p),
+                                             nn.Dropout(p=dopout_p),
                                              nn.Linear(classifier_hidden_layer, num_classes, bias=False),
                                              )
         # Init weights
@@ -206,9 +205,11 @@ class VGG(nn.Module):
         return mem_fc2 / self.num_steps
 
 
-def vgg_with_bntt(cfg: str, batch_norm: bool, num_steps, num_cls, beta=0.95, **kwargs: Any) -> VGG:
-    model = VGG(make_layers(configurations[cfg], batch_norm=batch_norm, num_steps=num_steps, beta=beta),
-                num_steps=num_steps,
-                num_classes=num_cls,
-                beta=beta, **kwargs)
+def vgg_with_bntt(cfg: str, batch_norm: bool, num_steps, num_cls, beta=0.95, dropout_p=0.0, **kwargs: Any) -> VGG:
+    model = VGG(
+        make_layers(configurations[cfg], batch_norm=batch_norm, num_steps=num_steps, beta=beta, dropout_p=dropout_p),
+        num_steps=num_steps,
+        num_classes=num_cls,
+        dropout_p=dropout_p,
+        beta=beta, **kwargs)
     return model
