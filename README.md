@@ -6,6 +6,7 @@ This project is divided into two directories.
 
     - `results` contains the result tables of the hyperparameter optimisation
     - `src` contains the srccode for all experiments
+    - `clearml` contains the docker compose file for the clearml server
 
 A Jupyter Notebook configuration is provided and can be started with:
 ```bash
