@@ -4,9 +4,9 @@ This project contains the code for my master's thesis.
 
 This project is divided into two directories.
 
-    - `results` contains the result tables of the hyperparameter optimisation
-    - `src` contains the srccode for all experiments
-    - `clearml` contains the docker compose file for the clearml server
+- `results` contains the result tables of the hyperparameter optimisation
+- `src` contains the srccode for all experiments
+- `clearml` contains the docker compose file for the clearml server
 
 A Jupyter Notebook configuration is provided and can be started with:
 ```bash
@@ -31,3 +31,7 @@ The Configuration can be found in the web UI of clearml (default [localhost:8080
 Then go to `Settings>Workspace>Create new credentials`, and simply copy this information into `cleaml-init`.
 
 Now everything should run as expected.
+
+All taining scripts are in the 'src' directory.
+For all files ending in _hp are hyperparamter optimisations, that relay on a base tasks.
+
